@@ -7,7 +7,7 @@ import operator
 import numpy as np
 
 STOPWORD_FILENAME = "stopWordEnglish.txt"
-SCRIPT_DIR = "scripts_Tony"
+SCRIPT_DIR = "scripts"
 
 class clr:
     HEADER = '\033[95m'

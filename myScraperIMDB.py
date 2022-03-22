@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 import requests
 
 BASE_URL = 'http://www.imsdb.com'
-SCRIPTS_DIR = 'scripts_Tony'
+SCRIPTS_DIR = 'scripts'
 
 
 def clean_script(text):
