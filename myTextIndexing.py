@@ -3,6 +3,8 @@ import json
 import sys
 import matplotlib.pyplot as plt
 import operator
+import shlex
+from boolean_parser import parse
 
 STOPWORD_FILENAME = "stopWordEnglish.txt"
 SCRIPT_DIR = "scripts"
@@ -27,6 +29,22 @@ def printColor(color, message):
     if isinstance(message, list):
         message = ', '.join(message)
     myPrint = print(color + message + clr.ENDC)
+
+def getWordsFormatted(query):
+    wordsFiltered = shlex.split(query.replace("and", "").replace("or", ""))
+    wordsFiltered = [word.replace("\"", "") for word in wordsFiltered if word]
+    print(wordsFiltered)
+    wordsFormatted = []
+    for i in range (0, len(wordsFiltered)):
+        if (i >= len(wordsFiltered)):
+            break
+        if (wordsFiltered[i] == "not"):
+            wordsFormatted.append(wordsFiltered[i] + " " + wordsFiltered[i + 1])
+            wordsFiltered.remove(wordsFiltered[i + 1])
+            i += 1
+        else:
+            wordsFormatted.append(wordsFiltered[i])
+    return wordsFormatted
 
 def retrieveGenresAndWriters(files):
     genres = []
@@ -235,6 +253,55 @@ def textIndexingTwoWriters(writers, movieByWriters, stopWordList):
    
     menuTwoWriter(firstWriterWordIndexDict, secondWriterWordIndexDict, firstWriter, secondWriter)
 
+def selectGenreForMenu(genres, movieByGenre, stopWordList):
+    userInput = input("Enter a genre of movie for the model (enter \"list\" to display the list of genre):")
+    if (userInput == "list"):
+        printColor(clr.OKGREEN, genres)
+        selectGenreForMenu(genres, movieByGenre, stopWordList)
+        return
+    modelsMenu(userInput, movieByGenre, stopWordList)
+
+def doBooleanModel(selectedGenre):
+    query = input("""Enter a query: 
+        - words
+        - 'AND' or 'OR' or 'NOT' keyword (no case-sensitive)\nExample: <\"dead\" and \"cry\ and not joy">: """)
+    query = "\"dead\" and \"cry\" or \"joy\""
+    movieMatch = []
+    selectedGenreFileNameList = movieByGenre[selectedGenre]
+    wordsFormatted = getWordsFormatted(query)
+    for fileName in selectedGenreFileNameList:
+        f = open(SCRIPT_DIR+"/"+fileName, "r", encoding="utf-8");
+        corpus = f.read().lower().strip().split()
+        if eval(query) in corpus:
+            movieMatch.append(fileName.split("@")[0].split(".html")[0])
+            print(query + " is in " + fileName.split("@")[0].split(".html")[0])
+    if (len(movieMatch) == 0):
+        printColor(clr.WARNING, "No match")
+        return
+    maxLengthMovieName = len(max(movieMatch, key=len))
+    print("Boolean Model:\n")
+    print("Movie Name".ljust(maxLengthMovieName), end="\t")
+    for word in wordsFormatted:
+        print(word, end="\t")
+    print("")
+    for movie in movieMatch:
+        print(movie.ljust(maxLengthMovieName) + "\t")
+
+    return
+
+def modelsMenu(selectedGenre, movieByGenre, stopWordList):
+    userInput = input("""Options:
+                1 - Boolean model
+                2 - Plot bar with the frequency of the N most used words from the two genres
+                0 - Go back to menu
+                          \n> """)
+   
+    if (userInput == "1"):
+        doBooleanModel(selectedGenre)
+    elif (userInput == "0"):
+        return
+    modelsMenu(genres, movieByGenre, stopWordList)
+
 def menu(genres, writers, movieByGenre, movieByWriter, stopWordList):
     userInput = input(
         """Menu:
@@ -245,6 +312,7 @@ def menu(genres, writers, movieByGenre, movieByWriter, stopWordList):
                 5 - Show stop words
                 6 - TextIndexing between two genres
                 7 - TextIndexing between two writers
+                8 - Models with one genre
                 0 - Exit\n> """)
     if (userInput == '1'):
         printColor(clr.OKGREEN, genres)
@@ -260,6 +328,8 @@ def menu(genres, writers, movieByGenre, movieByWriter, stopWordList):
         textIndexingTwoGenres(genres, movieByGenre, stopWordList)
     elif (userInput == '7'):
         textIndexingTwoWriters(writers, movieByWriter, stopWordList)
+    elif (userInput == '8'):
+        selectGenreForMenu(genres, movieByGenre, stopWordList)
     elif (userInput == '0'):
         sys.exit("Bye.")
     else:
@@ -298,8 +368,8 @@ if __name__ == "__main__":
     else:
         f = open("MovieByWriter.json")
         movieByWriter = json.loads(f.read())
-    
-    menu(genres, writers, movieByGenre, movieByWriter, stopWordList)
+    modelsMenu("crime", movieByGenre, stopWordList)
+    # menu(genres, writers, movieByGenre, movieByWriter, stopWordList)
     
     
 
