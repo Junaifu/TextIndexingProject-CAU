@@ -21,18 +21,22 @@ top.location.href=location.href
 ''', '')
     return text.replace(r'\r', '')
 
+
 def get_genres(page_html):
     tableDetail = page_html.find_all('table', class_="script-details")[0]
-    genreInTableDetail = tableDetail.find_all("a", href=lambda href: href and "/genre" in href)
+    genreInTableDetail = tableDetail.find_all(
+        "a", href=lambda href: href and "/genre" in href)
     genres = []
     for a in genreInTableDetail:
         genres.append(a.text)
     print(genres)
     return genres
 
+
 def get_writers(page_html):
     tableDetail = page_html.find_all('table', class_="script-details")[0]
-    writerInTableDetail = tableDetail.find_all("a", href=lambda href: href and "/writer" in href)
+    writerInTableDetail = tableDetail.find_all(
+        "a", href=lambda href: href and "/writer" in href)
     writers = []
     for a in writerInTableDetail:
         writers.append(a.text)
@@ -57,22 +61,31 @@ def get_script(relative_link):
     if script_link.endswith('.html'):
         title = script_link.split('/')[-1].split(' Script')[0]
         script_url = BASE_URL + script_link
-        script_soup = BeautifulSoup(requests.get(script_url).text, "html.parser")
-        script_text = script_soup.find_all('td', {'class': "scrtext"})[0].get_text()
+        script_soup = BeautifulSoup(
+            requests.get(script_url).text, "html.parser")
+        script_text = script_soup.find_all(
+            'td', {'class': "scrtext"})[0].get_text()
         script_text = clean_script(script_text)
-        return title + "@" + ",".join(genres) + "@" + ",".join(writers) , script_text
+        return title + "@" + ",".join(genres) + "@" + ",".join(writers), script_text
     else:
         print('%s is a pdf :(' % tail)
         return None, None
 
 
+def create_folder_if_not_exist():
+    if not os.path.exists(SCRIPTS_DIR):
+        os.mkdir(SCRIPTS_DIR)
+
 if __name__ == "__main__":
+    create_folder_if_not_exist()
+
     response = requests.get('https://imsdb.com/all-scripts.html')
     html = response.text
-
     soup = BeautifulSoup(html, "html.parser")
-    counter = 824
-    paragraphs = soup.find_all('p')[counter:]
+    # NOTE : Debug usage
+    # counter = 824
+    # paragraphs = soup.find_all('p')[counter:]
+    paragraphs = soup.find_all('p')
     for p in paragraphs:
         relative_link = p.a['href']
         title, script = get_script(relative_link)
