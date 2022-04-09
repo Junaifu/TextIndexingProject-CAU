@@ -4,9 +4,13 @@ import sys
 import matplotlib.pyplot as plt
 import operator
 import shlex
+import math
 
 STOPWORD_FILENAME = "stopWordEnglish.txt"
 SCRIPT_DIR = "scripts"
+
+PrecisionAndRecallReleventMoviesName1 = ["Apocalypse-Now", "Men-Who-Stare-at-Goats,-The", "Saving-Private-Ryan", "Three-Kings-(Spoils-of-War)", "Three-Kings"]
+PrecisionAndRecallReleventMoviesName2 = ["Cold-Mountain", "From-Here-to-Eternity", "Last-of-the-Mohicans,-The", "Last-Samurai,-The", "Saving-Private-Ryan"]
 
 class clr:
     HEADER = '\033[95m'
@@ -264,7 +268,7 @@ def selectGenreForMenu(genres, movieByGenre, stopWordList):
     printColor(clr.OKBLUE, "Number of movie [" + userInput + "]: " + str(len(movieByGenre[userInput])))
     modelsMenu(userInput, movieByGenre, stopWordList)
 
-def computeAndShowRevelentBooleanModelResult(queryConditionDict, moviesName, wordsFormatted, userQuery):
+def computeAndShowRelevantBooleanModelResult(queryConditionDict, moviesName, wordsFormatted, userQuery):
     queries = [query.strip() for query in userQuery.split("or")]
     retrievedMovie = []
     for movie in moviesName:
@@ -276,10 +280,10 @@ def computeAndShowRevelentBooleanModelResult(queryConditionDict, moviesName, wor
             if isQueryTrue:
                 retrievedMovie.append(movie)
     if (len(retrievedMovie) == 0):
-        printColor(clr.WARNING, "There are no revelent movies")
+        printColor(clr.WARNING, "There are no relevant movies")
         return
     maxLengthMovieName = len(max(retrievedMovie, key=len))
-    print("Boolean Model Revelent Result:\n")
+    printColor(clr.OKBLUE, "\nBoolean Model Relevant Result:\n")
     print("Movie Name".ljust(maxLengthMovieName), end="\t")
     for word in wordsFormatted:
             print(word, end="\t")
@@ -295,12 +299,12 @@ def computeAndShowRevelentBooleanModelResult(queryConditionDict, moviesName, wor
 def booleanModelResultMenu(queryConditionDict, moviesName, wordsFormatted, query):
     userInput = input("""Options:
                 1 - All result
-                2 - Revelent result
+                2 - Relevant result
                 0 - Go Back
                           \n> """)
     if (userInput == "1"):
         maxLengthMovieName = len(max(moviesName, key=len))
-        print("Boolean Model All Result:\n")
+        printColor(clr.OKBLUE, "\nBoolean Model All Result:\n")
         print("Movie Name".ljust(maxLengthMovieName), end="\t")
         for word in wordsFormatted:
             print(word, end="\t")
@@ -311,11 +315,71 @@ def booleanModelResultMenu(queryConditionDict, moviesName, wordsFormatted, query
                  print(str(queryConditionDict[word][movie]).ljust(len(word)), end="\t")
             print("")
     elif (userInput == "2"):
-        computeAndShowRevelentBooleanModelResult(queryConditionDict, moviesName, wordsFormatted, query)
+        computeAndShowRelevantBooleanModelResult(queryConditionDict, moviesName, wordsFormatted, query)
     elif (userInput == "0"):
         return
     booleanModelResultMenu(queryConditionDict, moviesName, wordsFormatted, query)
+
+def computationBooleanModel(selectedGenre, selectedGenreFileNameList, query):
+    moviesName = []
+    wordsFormatted = getWordsFormatted(query)
+    queryConditionDict = {}
+    for word in wordsFormatted:
+        queryConditionDict[word] = {}
+    for fileName in selectedGenreFileNameList:
+        f = open(SCRIPT_DIR+"/"+fileName, "r", encoding="utf-8");
+        corpus = f.read().lower().replace(".", "").replace(",", " ").replace("-", "") \
+        .replace("*", "").replace("+", "").replace("&", "").replace(")", "").replace("(", "") \
+        .strip().split()
+        movieName = fileName.split("@")[0].split(".html")[0]
+        moviesName.append(movieName)
+        for word in wordsFormatted:
+            queryConditionDict[word][movieName] = word.split(" ")[1] not in corpus if "not" in word else word in corpus
+    return queryConditionDict, moviesName, wordsFormatted
+
+def doBooleanMap(selectedGenre):
+    query = "mine and explosion and dead"
+    printColor(clr.OKBLUE, "Selected genre for precision and recall: " + clr.OKGREEN + selectedGenre + clr.OKBLUE + "\nQuery will be: " + clr.OKGREEN + query + clr.ENDC  + "\nThe word \"mine\" here will refer to \"a type of bomb put below the earth\"")
+    query2 = "gun and reload"
+    printColor(clr.OKBLUE,"\nQuery-2 will be: " + clr.OKGREEN + query)
     
+    queryConditionDict, moviesName, wordsFormatted = computationBooleanModel(selectedGenre, movieByGenre[selectedGenre], query)
+    queryConditionDict2, moviesName2, wordsFormatted2 = computationBooleanModel(selectedGenre, movieByGenre[selectedGenre], query2)    
+    
+    retrievedMovie = len(computeAndShowRelevantBooleanModelResult(queryConditionDict, moviesName, wordsFormatted, query))
+    retrievedMovie2 = len(computeAndShowRelevantBooleanModelResult(queryConditionDict2, moviesName2, wordsFormatted2, query2))
+    
+    printColor(clr.HEADER, "Choose a k for the precision@k: ")
+    k = int(input("> "))
+    i = 1
+    precision = 0
+    relevantDocumentInK = 0
+    precisions = []
+    for movie in moviesName:
+        if i - 1 >= k:
+            break
+        if movie in PrecisionAndRecallReleventMoviesName1:
+            relevantDocumentInK += 1
+            precisions.append(relevantDocumentInK / i)
+        i += 1
+    averagePrecisionQuery = sum(precisions) / relevantDocumentInK
+    
+    precision2 = 0
+    relevantDocumentInK2 = 0    
+    precisions2 = []
+    i = 1
+    for movie in moviesName:
+        if i - 1 >= k:
+            break
+        if movie in PrecisionAndRecallReleventMoviesName2:
+            relevantDocumentInK2 += 1
+            precisions2.append(relevantDocumentInK2 / i)
+        i += 1
+    averagePrecisionQuery2 = sum(precisions2) / relevantDocumentInK2
+    
+    printColor(clr.OKBLUE, "Average precision query 1: {0} {1} {2}\nAverage precision query 2: {3} {4} {5} \nMean average precision: {6} {7} "\
+        .format(clr.OKGREEN, averagePrecisionQuery, clr.OKBLUE, clr.OKGREEN, averagePrecisionQuery2, clr.OKBLUE, clr.OKGREEN,\
+            round((averagePrecisionQuery + averagePrecisionQuery2)/2, 4)))
 
 def doBooleanModel(selectedGenre, isPrecisionAndRecall):
     query = ""
@@ -336,36 +400,242 @@ def doBooleanModel(selectedGenre, isPrecisionAndRecall):
     else:
         query = "mine and explosion and dead"
         printColor(clr.OKBLUE, "Selected genre for precision and recall: " + clr.OKGREEN + selectedGenre + clr.OKBLUE + "\nQuery will be: " + clr.OKGREEN + query + clr.ENDC  + "\nThe word \"mine\" here will refer to \"a type of bomb put below the earth\"")
-
-    movieMatch = []
-    selectedGenreFileNameList = movieByGenre[selectedGenre]
-    wordsFormatted = getWordsFormatted(query)
-    queryConditionDict = {}
-    moviesName = []
-    for word in wordsFormatted:
-        queryConditionDict[word] = {}
-    for fileName in selectedGenreFileNameList:
-        f = open(SCRIPT_DIR+"/"+fileName, "r", encoding="utf-8");
-        corpus = f.read().lower().strip().split()
-        movieName = fileName.split("@")[0].split(".html")[0]
-        moviesName.append(movieName)
-        for word in wordsFormatted:
-            queryConditionDict[word][movieName] = word.split(" ")[1] not in corpus if "not" in word else word in corpus
+        
+    queryConditionDict, moviesName, wordsFormatted = computationBooleanModel(selectedGenre, movieByGenre[selectedGenre], query)
+    
     if not isPrecisionAndRecall:
         booleanModelResultMenu(queryConditionDict, moviesName, wordsFormatted, query)
     else:
-        retrievedMovie = len(computeAndShowRevelentBooleanModelResult(queryConditionDict, moviesName, wordsFormatted, query))
+        retrievedMovie = len(computeAndShowRelevantBooleanModelResult(queryConditionDict, moviesName, wordsFormatted, query))
         # True Positive
-        rightMeaningMineBomb = 6
+        rightMeaningMineBomb = len(PrecisionAndRecallReleventMoviesName1)
         # False Positive
         retrievedMovieFalsePositive = retrievedMovie - rightMeaningMineBomb
-        print("retrievedMovieFalsePositive: " + str(retrievedMovieFalsePositive))
-        # False negative: There are not false negative
+        # No false negative
         falseNegative = 0
         precision = rightMeaningMineBomb / (rightMeaningMineBomb + retrievedMovieFalsePositive)
         recall = rightMeaningMineBomb / (rightMeaningMineBomb + falseNegative)
         printColor(clr.OKBLUE, "Precision: {0} {1} {2}\nRecall: {3} {4}".format(clr.OKGREEN, precision, clr.OKBLUE, clr.OKGREEN, recall))
+    return
 
+def getWordsFrequenciesByMovieNameDict(fileNameList):
+    wordsFrequenciesByMovieName = dict()
+
+    for fileName in fileNameList:
+        movieName = fileName.split("@")[0].split(".html")[0]
+        wordsFrequenciesByMovieName[movieName] = dict()
+        f = open(SCRIPT_DIR+"/"+fileName, "r", encoding="utf-8");
+        corpus = f.read()
+        for word in corpus.lower().replace(".", "").replace(",", "").replace("-", "") \
+        .replace("*", "").replace("+", "").replace("&", "").replace(")", "").replace("(", "") \
+        .strip().split():
+            if word not in stopWordList:
+                if word not in wordsFrequenciesByMovieName[movieName]:
+                    wordsFrequenciesByMovieName[movieName][word] = 0
+                wordsFrequenciesByMovieName[movieName][word] += 1
+    return wordsFrequenciesByMovieName
+
+def computeCosinusSimilarity(queryWordsTFIDF, documentWordsTFIDF):
+    numerator = 0
+    queryDenominator = 0
+    documentDenominator = 0
+    for word in queryWordsTFIDF:
+        numerator += queryWordsTFIDF[word] * documentWordsTFIDF[word]
+        queryDenominator += queryWordsTFIDF[word] ** 2
+        documentDenominator += documentWordsTFIDF[word] ** 2
+    queryDenominator = math.sqrt(queryDenominator)
+    documentDenominator = math.sqrt(documentDenominator)    
+
+    return 0 if (queryDenominator * documentDenominator) == 0 else numerator / (queryDenominator * documentDenominator)
+
+def computeVectorModelForMap(selectedGenreFileNameList, query):
+    movieMatch = []
+    words = [word.strip() for word in query.split(" ")]
+    intersection = list(set(words) & set(stopWordList))
+    if (intersection != []):
+        for wordToRemove in intersection:
+            while wordToRemove in words: words.remove(wordToRemove)
+    wordsWithoutDuplicate = list(set(words)) 
+    wordsFrequencyByDocument = getWordsFrequenciesByMovieNameDict(selectedGenreFileNameList)
+    queryWordsFrequencyByDocument = {}
+    inverseDocumentFrequency = {}
+    totalMovie = len(wordsFrequencyByDocument)
+    for movieName in wordsFrequencyByDocument:
+        if wordsFrequencyByDocument[movieName]:
+            maxWordKey = max(wordsFrequencyByDocument[movieName], key=wordsFrequencyByDocument[movieName].get)
+            queryWordsFrequencyByDocument[movieName] = {key: wordsFrequencyByDocument[movieName][key] / wordsFrequencyByDocument[movieName][maxWordKey] if key in wordsFrequencyByDocument[movieName] else 0 for key in words}
+            queryWordsFrequencyByDocument[movieName][maxWordKey] = wordsFrequencyByDocument[movieName][maxWordKey]
+            # NOTE: tf / total of word
+            # lenCorpus = sum(wordsFrequencyByDocument[movieName].values())
+            # queryWordsFrequencyByDocument[movieName] = {key: wordsFrequencyByDocument[movieName][key] / lenCorpus if key in wordsFrequencyByDocument[movieName] else 0 for key in words}
+    for word in wordsWithoutDuplicate:
+        inverseDocumentFrequency[word] = 0
+    for movieName in queryWordsFrequencyByDocument:
+        for word in wordsWithoutDuplicate:
+            if queryWordsFrequencyByDocument[movieName][word] != 0:
+                inverseDocumentFrequency[word] += 1
+    for word in inverseDocumentFrequency:
+        inverseDocumentFrequency[word] = 0 if inverseDocumentFrequency[word] == 0 else math.log2(totalMovie/inverseDocumentFrequency[word])
+    maxLengthMovieName = len(max(queryWordsFrequencyByDocument, key=len))
+    
+    queryTFIDF = {}
+    duplicateFrequencies = {}
+    for word in set(wordsWithoutDuplicate):
+        duplicateFrequencies[word] = wordsWithoutDuplicate.count(word)
+    for word in wordsWithoutDuplicate:
+        queryTFIDF[word] = (duplicateFrequencies[word] / max(duplicateFrequencies.values())) * inverseDocumentFrequency[word]
+        
+    cosinusSimilarityByMovie = {}
+    for movie in queryWordsFrequencyByDocument:
+        cosinusSimilarityByMovie[movie] = round(computeCosinusSimilarity(queryTFIDF, queryWordsFrequencyByDocument[movie]), 4)
+    
+    cosinusSimilarityByMovieSorted = dict(sorted(cosinusSimilarityByMovie.items(), key=lambda item: item[1], reverse=True))
+    printColor(clr.OKBLUE,"\nVector Model Cosinus Similarity Sorted:\n")
+    print("Movie Name".ljust(maxLengthMovieName), end="\t")
+    print("Cosinus Similarity")
+    for movie in cosinusSimilarityByMovieSorted:
+        print(movie.ljust(maxLengthMovieName), end="\t")
+        print(str(cosinusSimilarityByMovie[movie]))
+    return cosinusSimilarityByMovieSorted
+        
+def doVectorMap(selectedGenre):
+    query = "a mine where it will have an explosion and a dead"
+    printColor(clr.OKBLUE, "Selected genre for precision and recall: " + clr.OKGREEN + selectedGenre + clr.OKBLUE + "\nQuery will be: " + clr.OKGREEN + query + clr.ENDC  + "\nThe word \"mine\" here will refer to \"a type of bomb put below the earth\"")
+    query2 = "reload the gun"
+    printColor(clr.OKBLUE,"\nQuery-2 will be: " + clr.OKGREEN + query)
+    
+    cosinusSimilarityByMovieSorted = computeVectorModelForMap(movieByGenre[selectedGenre], query)
+    cosinusSimilarityByMovieSorted2 = computeVectorModelForMap(movieByGenre[selectedGenre], query2)    
+        
+    printColor(clr.HEADER, "Choose a k for the precision@k: ")
+    k = int(input("> "))
+    i = 1
+    precision = 0
+    relevantDocumentInK = 0
+    precisions = []
+    for movie in cosinusSimilarityByMovieSorted:
+        if i - 1 >= k:
+            break
+        if movie in PrecisionAndRecallReleventMoviesName1:
+            relevantDocumentInK += 1
+            precisions.append(relevantDocumentInK / i)
+        i += 1
+    averagePrecisionQuery = sum(precisions) / relevantDocumentInK
+    
+    precision2 = 0
+    relevantDocumentInK2 = 0    
+    precisions2 = []
+    i = 1
+    for movie in cosinusSimilarityByMovieSorted2:
+        if i - 1 >= k:
+            break
+        if movie in PrecisionAndRecallReleventMoviesName2:
+            relevantDocumentInK2 += 1
+            precisions2.append(relevantDocumentInK2 / i)
+        i += 1
+    averagePrecisionQuery2 = sum(precisions2) / relevantDocumentInK2
+    
+    printColor(clr.OKBLUE, "Average precision query 1: {0} {1} {2}\nAverage precision query 2: {3} {4} {5} \nMean average precision: {6} {7} "\
+        .format(clr.OKGREEN, averagePrecisionQuery, clr.OKBLUE, clr.OKGREEN, averagePrecisionQuery2, clr.OKBLUE, clr.OKGREEN,\
+            round((averagePrecisionQuery + averagePrecisionQuery2)/2, 4)))
+
+
+def doVectorModel(selectedGenre, stopWordList, isPrecisionAndRecall):
+    query = ""
+    if not isPrecisionAndRecall:
+        query = input("""Enter a query:
+            - words or a sentence\nExample: <a mine where it will have an explosion and a dead>: """)
+        query = query.lower()
+        if (query == ""):
+            printColor(clr.ERROR, "You need to enter a query")
+            doVectorModel(selectedGenre, False)
+            return
+        elif ("(" in query or ")" in query):
+            printColor(clr.ERROR, "Parenthesis aren't accepted")
+            doVectorModel(selectedGenre, False)
+            return
+    else:
+        query = "a mine where it will have an explosion and a dead"
+        printColor(clr.OKBLUE, "Selected genre for precision and recall: " + clr.OKGREEN + selectedGenre + clr.OKBLUE + "\nQuery will be: " + clr.OKGREEN + query + clr.ENDC  + "\nThe word \"mine\" here will refer to \"a type of bomb put below the earth\"")
+
+    computeVectorModel(movieByGenre[selectedGenre], query)
+
+    movieMatch = []
+    selectedGenreFileNameList = movieByGenre[selectedGenre]
+    words = [word.strip() for word in query.split(" ")]
+    intersection = list(set(words) & set(stopWordList))
+    if (intersection != []):
+        for wordToRemove in intersection:
+            while wordToRemove in words: words.remove(wordToRemove)
+    wordsWithoutDuplicate = list(set(words)) 
+    wordsFrequencyByDocument = getWordsFrequenciesByMovieNameDict(selectedGenreFileNameList)
+    queryWordsFrequencyByDocument = {}
+    inverseDocumentFrequency = {}
+    totalMovie = len(wordsFrequencyByDocument)
+    for movieName in wordsFrequencyByDocument:
+        if wordsFrequencyByDocument[movieName]:
+            maxWordKey = max(wordsFrequencyByDocument[movieName], key=wordsFrequencyByDocument[movieName].get)
+            queryWordsFrequencyByDocument[movieName] = {key: wordsFrequencyByDocument[movieName][key] / wordsFrequencyByDocument[movieName][maxWordKey] if key in wordsFrequencyByDocument[movieName] else 0 for key in words}
+            queryWordsFrequencyByDocument[movieName][maxWordKey] = wordsFrequencyByDocument[movieName][maxWordKey]
+            # NOTE: tf / total of word
+            # lenCorpus = sum(wordsFrequencyByDocument[movieName].values())
+            # queryWordsFrequencyByDocument[movieName] = {key: wordsFrequencyByDocument[movieName][key] / lenCorpus if key in wordsFrequencyByDocument[movieName] else 0 for key in words}
+    for word in wordsWithoutDuplicate:
+        inverseDocumentFrequency[word] = 0
+    for movieName in queryWordsFrequencyByDocument:
+        for word in wordsWithoutDuplicate:
+            if queryWordsFrequencyByDocument[movieName][word] != 0:
+                inverseDocumentFrequency[word] += 1
+    for word in inverseDocumentFrequency:
+        inverseDocumentFrequency[word] = 0 if inverseDocumentFrequency[word] == 0 else math.log2(totalMovie/inverseDocumentFrequency[word])
+    maxLengthMovieName = len(max(queryWordsFrequencyByDocument, key=len))
+    printColor(clr.OKBLUE, "\nVector Model TF.IDF:\n")
+    print("Movie Name".ljust(maxLengthMovieName), end="\t")
+    for word in wordsWithoutDuplicate:
+        print(word, end="\t")
+    print("")
+    for movie in queryWordsFrequencyByDocument:
+        print(movie.ljust(maxLengthMovieName), end="\t")
+        for word in wordsWithoutDuplicate:
+                print(str(round(queryWordsFrequencyByDocument[movie][word] * inverseDocumentFrequency[word], 4)).ljust(len(word)), end="\t")
+        print("")
+    
+    queryTFIDF = {}
+    duplicateFrequencies = {}
+    for word in set(wordsWithoutDuplicate):
+        duplicateFrequencies[word] = wordsWithoutDuplicate.count(word)
+    for word in wordsWithoutDuplicate:
+        queryTFIDF[word] = (duplicateFrequencies[word] / max(duplicateFrequencies.values())) * inverseDocumentFrequency[word]
+        
+    cosinusSimilarityByMovie = {}
+    printColor(clr.OKBLUE,"\nVector Model Cosinus Similarity:\n")
+    print("Movie Name".ljust(maxLengthMovieName), end="\t")
+    print("Cosinus Similarity")
+    print("")
+    for movie in queryWordsFrequencyByDocument:
+        print(movie.ljust(maxLengthMovieName), end="\t")
+        cosinusSimilarityByMovie[movie] = round(computeCosinusSimilarity(queryTFIDF, queryWordsFrequencyByDocument[movie]), 4)
+        print(str(cosinusSimilarityByMovie[movie]))
+    
+    cosinusSimilarityByMovieSorted = dict(sorted(cosinusSimilarityByMovie.items(), key=lambda item: item[1], reverse=True))
+    printColor(clr.OKBLUE,"\nVector Model Cosinus Similarity Sorted:\n")
+    print("Movie Name".ljust(maxLengthMovieName), end="\t")
+    print("Cosinus Similarity")
+    for movie in cosinusSimilarityByMovieSorted:
+        print(movie.ljust(maxLengthMovieName), end="\t")
+        print(str(cosinusSimilarityByMovie[movie]))
+
+    if isPrecisionAndRecall:
+        retrievedMovie = len(cosinusSimilarityByMovieSorted)
+        # True Positive
+        rightMeaningMineBomb = len(PrecisionAndRecallReleventMoviesName1)
+        # False Positive
+        retrievedMovieFalsePositive = retrievedMovie - rightMeaningMineBomb
+        # No False negative 
+        falseNegative = 0
+        precision = rightMeaningMineBomb / (rightMeaningMineBomb + retrievedMovieFalsePositive)
+        recall = rightMeaningMineBomb / (rightMeaningMineBomb + falseNegative)
+        printColor(clr.OKBLUE, "Precision: {0} {1} {2}\nRecall: {3} {4}".format(clr.OKGREEN, precision, clr.OKBLUE, clr.OKGREEN, recall))
     return
 
 def modelsMenu(selectedGenre, movieByGenre, stopWordList):
@@ -377,6 +647,8 @@ def modelsMenu(selectedGenre, movieByGenre, stopWordList):
    
     if (userInput == "1"):
         doBooleanModel(selectedGenre, False)
+    elif (userInput == "2"):
+        doVectorModel(selectedGenre, stopWordList, False)
     elif (userInput == "0"):
         return
     modelsMenu(selectedGenre, movieByGenre, stopWordList)
@@ -393,6 +665,9 @@ def menu(genres, writers, movieByGenre, movieByWriter, stopWordList):
                 7 - TextIndexing between two writers
                 8 - Models with one genre
                 9 - Boolean model precision & recall
+                10 - Boolean model MAP
+                11 - Vector model precision & recall
+                12 - Vector model MAP
                 0 - Exit\n> """)
     if (userInput == '1'):
         printColor(clr.OKGREEN, genres)
@@ -412,6 +687,12 @@ def menu(genres, writers, movieByGenre, movieByWriter, stopWordList):
         selectGenreForMenu(genres, movieByGenre, stopWordList)
     elif (userInput == '9'):
         doBooleanModel("war", True)
+    elif (userInput == '10'):
+        doBooleanMap("war")
+    elif(userInput == '11'):
+        doVectorModel("war", stopWordList, True)
+    elif(userInput == '12'):
+        doVectorMap("war")
     elif (userInput == '0'):
         sys.exit("Bye.")
     else:
