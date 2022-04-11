@@ -341,7 +341,7 @@ def doBooleanMap(selectedGenre):
     query = "mine and explosion and dead"
     printColor(clr.OKBLUE, "Selected genre for precision and recall: " + clr.OKGREEN + selectedGenre + clr.OKBLUE + "\nQuery will be: " + clr.OKGREEN + query + clr.ENDC  + "\nThe word \"mine\" here will refer to \"a type of bomb put below the earth\"")
     query2 = "gun and reload"
-    printColor(clr.OKBLUE,"\nQuery-2 will be: " + clr.OKGREEN + query)
+    printColor(clr.OKBLUE,"\nQuery-2 will be: " + clr.OKGREEN + query2)
     
     queryConditionDict, moviesName, wordsFormatted = computationBooleanModel(selectedGenre, movieByGenre[selectedGenre], query)
     queryConditionDict2, moviesName2, wordsFormatted2 = computationBooleanModel(selectedGenre, movieByGenre[selectedGenre], query2)    
@@ -351,6 +351,8 @@ def doBooleanMap(selectedGenre):
     
     printColor(clr.HEADER, "Choose a k for the precision@k: ")
     k = int(input("> "))
+    if type(k) is not k:
+        doVectorMap(selectedGenre)
     i = 1
     precision = 0
     relevantDocumentInK = 0
@@ -502,13 +504,15 @@ def doVectorMap(selectedGenre):
     query = "a mine where it will have an explosion and a dead"
     printColor(clr.OKBLUE, "Selected genre for precision and recall: " + clr.OKGREEN + selectedGenre + clr.OKBLUE + "\nQuery will be: " + clr.OKGREEN + query + clr.ENDC  + "\nThe word \"mine\" here will refer to \"a type of bomb put below the earth\"")
     query2 = "reload the gun"
-    printColor(clr.OKBLUE,"\nQuery-2 will be: " + clr.OKGREEN + query)
+    printColor(clr.OKBLUE,"\nQuery-2 will be: " + clr.OKGREEN + query2)
     
     cosinusSimilarityByMovieSorted = computeVectorModelForMap(movieByGenre[selectedGenre], query)
     cosinusSimilarityByMovieSorted2 = computeVectorModelForMap(movieByGenre[selectedGenre], query2)    
         
     printColor(clr.HEADER, "Choose a k for the precision@k: ")
     k = int(input("> "))
+    if type(k) is not k:
+        doVectorMap(selectedGenre)
     i = 1
     precision = 0
     relevantDocumentInK = 0
@@ -557,8 +561,6 @@ def doVectorModel(selectedGenre, stopWordList, isPrecisionAndRecall):
     else:
         query = "a mine where it will have an explosion and a dead"
         printColor(clr.OKBLUE, "Selected genre for precision and recall: " + clr.OKGREEN + selectedGenre + clr.OKBLUE + "\nQuery will be: " + clr.OKGREEN + query + clr.ENDC  + "\nThe word \"mine\" here will refer to \"a type of bomb put below the earth\"")
-
-    computeVectorModel(movieByGenre[selectedGenre], query)
 
     movieMatch = []
     selectedGenreFileNameList = movieByGenre[selectedGenre]
