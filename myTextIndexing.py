@@ -511,7 +511,7 @@ def doVectorMap(selectedGenre):
         
     printColor(clr.HEADER, "Choose a k for the precision@k: ")
     k = int(input("> "))
-    if type(k) is not k:
+    if type(k) is not int:
         doVectorMap(selectedGenre)
     i = 1
     precision = 0
